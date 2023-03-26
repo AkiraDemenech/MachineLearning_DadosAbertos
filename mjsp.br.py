@@ -25,8 +25,9 @@ import os
 timestamp = lambda lt=None: timestamp(time.localtime()) if lt == None else (lt[2::-1] + lt[3:6])
 s_timestamp = lambda t=None: s_timestamp(timestamp()) if t == None else '%02d/%02d/%d %02d:%02d:%02d' % t
 
+folder = './dados/'
 
-def ibge(caminho='./dados/'):
+def ibge(caminho=folder):
 	ibge = {}
 	raw_ibge = {}
 
@@ -86,11 +87,12 @@ for k in a:
 # '''
 
 
-def seg_pub(arq='./dados/indicadoressegurancapublicauf (1).xls', ibge_pop=None):
+def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None, full_pop = False, test_years = {2021}):
 	if ibge_pop == None:
 		ibge_pop = ibge()[0]
 
-	seg_pub = {}
+	testes = {}
+	seg_pub = {} # dados do treinamento
 	seg_pub_xls = pandas.ExcelFile(arq)
 	ocorr = pandas.read_excel(seg_pub_xls, 'Ocorrências')
 	vitim = pandas.read_excel(seg_pub_xls, 'Vítimas')
@@ -100,19 +102,24 @@ def seg_pub(arq='./dados/indicadoressegurancapublicauf (1).xls', ibge_pop=None):
 		crime = ocorr['Tipo Crime'][i]
 		ano = ocorr['Ano'][i]
 		uf = ocorr['UF'][i]
+		ln = {}
 
 		if not ano in ibge_pop:
-			#	print(ano,'sem população')
 			continue
-		ln = dict(ibge_pop[ano])
 
-		if not uf in seg_pub:
-			seg_pub[uf] = {}
-		if not crime in seg_pub[uf]:
-			seg_pub[uf][crime] = {}
-		if not 'Total' in seg_pub[uf][crime]:
-			seg_pub[uf][crime]['Total'] = []
-		seg_pub[uf][crime]['Total'].append(ln)
+		if full_pop:
+			ln.update(ibge_pop[ano])
+		else:	
+			ln['Pop'] = ibge_pop[ano][uf]							
+
+		dados = testes if ano in test_years else seg_pub
+		if not uf in dados:
+			dados[uf] = {}
+		if not crime in dados[uf]:
+			dados[uf][crime] = {}
+		if not 'Total' in dados[uf][crime]:
+			dados[uf][crime]['Total'] = []
+		dados[uf][crime]['Total'].append(ln)
 
 		#	ln['UF'] = ocorr[i]['UF']
 		#	ln['Crime'] = ocorr[i]['Tipo Crime']
@@ -128,18 +135,24 @@ def seg_pub(arq='./dados/indicadoressegurancapublicauf (1).xls', ibge_pop=None):
 		ano = vitim['Ano'][i]
 		uf = vitim['UF'][i]
 
-		if not ano in ibge_pop:
-			#	print(ano,'sem população')
-			continue
-		ln = dict(ibge_pop[ano])
+		ln = {}
 
-		if not uf in seg_pub:
-			seg_pub[uf] = {}
-		if not crime in seg_pub[uf]:
-			seg_pub[uf][crime] = {}
-		if not sexo in seg_pub[uf][crime]:
-			seg_pub[uf][crime][sexo] = []
-		seg_pub[uf][crime][sexo].append(ln)
+		if not ano in ibge_pop:
+			continue 
+		if full_pop:
+			ln.update(ibge_pop[ano])
+		else:	
+			ln['Pop'] = ibge_pop[ano][uf]
+
+		dados = testes if ano in test_years else seg_pub
+
+		if not uf in dados:
+			dados[uf] = {}
+		if not crime in dados[uf]:
+			dados[uf][crime] = {}
+		if not sexo in dados[uf][crime]:
+			dados[uf][crime][sexo] = []
+		dados[uf][crime][sexo].append(ln)
 
 		ln['Ano'] = ano
 		ln['Mês'] = months[vitim['Mês'][i].strip().lower()]
@@ -147,10 +160,11 @@ def seg_pub(arq='./dados/indicadoressegurancapublicauf (1).xls', ibge_pop=None):
 
 	return seg_pub
 
+
 from sklearn.neighbors import KNeighborsRegressor, KNeighborsClassifier
 
-data = seg_pub()
-print(data)
+data, test = seg_pub()
+#print(data)
 # uf,crime,sexo
 for uf in data:
 	for crime in data[uf]:
@@ -162,6 +176,7 @@ for uf in data:
 			for ln in data[uf][crime][sexo]:
 				x.append([ln[c] for c in x_cols])
 				y.append([ln[c] for c in y_cols])
-knn_model = KNeighborsClassifier(n_neighbors=3)
-knn_model.fit(x, y)
-knn_model.predict()
+
+			knn_model = KNeighborsClassifier(n_neighbors=3)
+			knn_model.fit(x, y)
+			knn_model.predict()
