@@ -66,27 +66,17 @@ def ibge (caminho = './dados/'):
 
 	return ibge, raw_ibge		
 
+'''
 a = ibge()[0]
 for k in a:
 	print('\n', k)
 	for uf in a[k]:
 		print(uf,'\t', a[k][uf])
+# '''		
 
 
-#exit()
-pop2020 = pandas.read_excel('IA/aprendizado de máquina/estimativa_dou_2020.xls')
-pop2021 = pandas.read_excel('IA/aprendizado de máquina/estimativa_dou_2021 (1).xls')
-print(pop2020)
+seg_pub = pandas.read_excel('./dados/indicadoressegurancapublicauf (1).xls')
 
-seg_pub = pandas.read_excel('IA/aprendizado de máquina/indicadoressegurancapublicauf (1).xls')
 
-meses = {}
-for i in range(len(seg_pub)):
-	if not seg_pub['Ano'][i] in meses:
-		meses[seg_pub['Ano'][i]] = {}
-	if not seg_pub['Mês'][i] in meses[seg_pub['Ano'][i]]: 	
-		meses[seg_pub['Ano'][i]][seg_pub['Mês'][i]] = []
 		
 
-print(set(seg_pub['UF']))
-print(meses[2022])
