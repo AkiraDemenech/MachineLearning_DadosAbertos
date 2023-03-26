@@ -168,30 +168,44 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
 
 from sklearn.neighbors import KNeighborsRegressor, KNeighborsClassifier
 
-data, test, types = seg_pub()
-#print(data)
-# UF
-for uf in data:
-	print('\n', uf)
-	x = []
-	y = []
+dados, testes, tipos = seg_pub()
+def treinar_testar (model, data, test, types, y_cols = ['Ocorrências']):
 
-	y_cols = ['Ocorrências']
-	x_cols = [c for c in data[uf][0] if not c in y_cols]
+	correct = []
+	predicted = []
 
-	print(x_cols, '\t', y_cols)
-	for ln in data[uf]:
-		x.append([ln[c] for c in x_cols])
-		y.append([ln[c] for c in y_cols])
-
-	knn_model = KNeighborsClassifier(n_neighbors=3)
-	knn_model.fit(x, y)
-			
-	# Crime,Sexo,Pop,Ano,Mês -> Ocorrências 
-	for ln in test[uf]:
-		x = [ln[c] for c in x_cols]
-		y = knn_model.predict([x])
-		t = [ln[c] for c in y_cols]		
+	for uf in data:
+		print('\n', uf)
+		x = []
+		y = []
 		
-		print(repr(crime_convert(x[x_cols.index('Crime')], types)),repr(sex[x[x_cols.index('Sexo')]]), x, '\t', y, t)
-		input()
+		x_cols = [c for c in data[uf][0] if not c in y_cols]
+
+		print(x_cols, '\t', y_cols)
+		for ln in data[uf]:
+			x.append([ln[c] for c in x_cols])
+			y.append([ln[c] for c in y_cols])
+
+		model.fit(x, y)
+				
+		# Crime,Sexo,Pop,Ano,Mês -> Ocorrências 
+		
+		for ln in test[uf]:			
+
+			x = [ln[c] for c in x_cols]
+			y = model.predict([x])
+			t = [ln[c] for c in y_cols]		
+
+			crime = crime_convert(x[x_cols.index('Crime')], types)
+			sexo = sex[x[x_cols.index('Sexo')]]
+
+			# [contexto], [entrada], [saída]
+			correct.append(([uf, crime, sexo], x, t))
+			predicted.append(([uf, crime, sexo], x, y))			
+			
+			print(repr(crime),repr(sexo), x, '\t', y, t)
+			#input()
+
+	return correct, predicted		
+
+corretos, preditos = treinar_testar(KNeighborsClassifier(n_neighbors=3), dados, testes, tipos)
