@@ -99,9 +99,14 @@ def seg_pub (arq = './dados/indicadoressegurancapublicauf (1).xls', ibge_pop = N
 	vitim = pandas.read_excel(seg_pub_xls, 'Vítimas')
 
 	for i in range(len(ocorr)):
-		crime = ocorr[i]['Tipo Crime']
-		ano = ocorr[i]['Ano']
-		uf = ocorr[i]['UF']
+		
+		crime = ocorr['Tipo Crime'][i]
+		ano = ocorr['Ano'][i]
+		uf = ocorr['UF'][i]
+
+		if not ano in ibge_pop:
+		#	print(ano,'sem população')
+			continue 
 		ln = dict(ibge_pop[ano])
 		
 		if not uf in seg_pub:
@@ -115,25 +120,30 @@ def seg_pub (arq = './dados/indicadoressegurancapublicauf (1).xls', ibge_pop = N
 	#	ln['Sexo'] = 'Total'
 		
 		ln['Ano'] = ano
-		ln['Mês'] = months(ocorr[i]['Mês'].strip().lower())
-		ln['Ocorrências'] = ocorr[i]['Ocorrências']
+		ln['Mês'] = months[ocorr['Mês'][i].strip().lower()]
+		ln['Ocorrências'] = ocorr['Ocorrências'][i]
 
 	for i in range(len(vitim)):	
-		crime = vitim[i]['Tipo Crime']
-		ano = vitim[i]['Ano']
-		uf = vitim[i]['UF']
+		crime = vitim['Tipo Crime'][i]
+		ano = vitim['Ano'][i]
+		uf = vitim['UF'][i]
+
+		if not ano in ibge_pop:
+		#	print(ano,'sem população')
+			continue 
 		ln = dict(ibge_pop[ano])
 		
 		if not uf in seg_pub:
 			seg_pub[uf] = {}
 		if not crime in seg_pub[uf]:
 			seg_pub[uf][crime] = {}
-		seg_pub[uf][crime][vitim[i]['Sexo da Vítima']] = ln
+		seg_pub[uf][crime][vitim['Sexo da Vítima'][i]] = ln
 
 		ln['Ano'] = ano
-		ln['Mês'] = months(vitim[i]['Mês'].strip().lower())
-		ln['Ocorrências'] = vitim[i]['Vítimas']
+		ln['Mês'] = months[vitim['Mês'][i].strip().lower()]
+		ln['Ocorrências'] = vitim['Vítimas'][i]
 		
 	return seg_pub
 		
 
+print(seg_pub())
