@@ -215,8 +215,8 @@ from sklearn.metrics import r2_score, mean_squared_error, accuracy_score, recall
 
 corretos, preditos = treinar_testar(LinearRegression(), dados, testes, tipos)
 
-num_corretos = [o[0] for c, i, o in corretos]
-num_preditos = [o[0][0] for c, i, o in preditos]
+num_corretos = [o[0]	for c, i, o in corretos]
+num_preditos = [o[0][0]	for c, i, o in preditos]
 
 r2_score(num_corretos, num_preditos)
 mean_squared_error(num_corretos, num_preditos)
@@ -224,8 +224,8 @@ mean_squared_error(num_corretos, num_preditos)
 
 corretos, preditos = treinar_testar(KNeighborsClassifier(n_neighbors=3), dados, testes, tipos)
 
-num_corretos = [o[0] for c, i, o in corretos]
-num_preditos = [o[0] for c, i, o in preditos]
+num_corretos = [o[0]	for c, i, o in corretos]
+num_preditos = [o[0]	for c, i, o in preditos]
 
 confusion_matrix(num_corretos, num_preditos)
 r2_score(num_corretos, num_preditos)
