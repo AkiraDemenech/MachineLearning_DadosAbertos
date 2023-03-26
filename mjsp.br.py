@@ -27,7 +27,7 @@ def ibge (caminho = './dados/'):
 			print(s_timestamp(), '\tReading file....')	
 
 			i = time.time_ns()
-			raw_ibge[ano] = pandas.read_excel(caminho + arq) 		
+			raw_ibge[ano] = pandas.read_excel(pandas.ExcelFile(caminho + arq), 'BRASIL E UFs') 		
 			f = time.time_ns()
 
 			print(s_timestamp(), '\t',len(raw_ibge[ano]), 'raw rows in',(f-i)/1000000,'ms')
@@ -74,9 +74,28 @@ for k in a:
 		print(uf,'\t', a[k][uf])
 # '''		
 
+def seg_pub (arq = './dados/indicadoressegurancapublicauf (1).xls', ibge_pop = None):
 
-seg_pub = pandas.read_excel('./dados/indicadoressegurancapublicauf (1).xls')
+	if ibge_pop == None:
+		ibge_pop = ibge()[0]
 
+	seg_pub = []
+	seg_pub_xls = pandas.ExcelFile(arq)
+	ocorr = pandas.read_excel(seg_pub_xls, 'Ocorrências')
+	vitim = pandas.read_excel(seg_pub_xls, 'Vítimas')
 
+	for i in range(len(ocorr)):
+		ano = ocorr[i]['Ano']
+		ln = dict(ibge_pop[ano])
+		ln['UF'] = ocorr[i]['UF']
+		ln['Crime'] = ocorr[i]['Tipo Crime']
+		ln['Sexo'] = 'Total'
+		
+		ln['Ano'] = ano
+		ln['Mês'] = ocorr[i]['Mês']
+		ln['Vítimas'] = ocorr[i]['Vítimas']
+		seg_pub.append(ln)
+		
+	return seg_pub
 		
 
