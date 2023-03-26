@@ -113,7 +113,9 @@ def seg_pub (arq = './dados/indicadoressegurancapublicauf (1).xls', ibge_pop = N
 			seg_pub[uf] = {}
 		if not crime in seg_pub[uf]:
 			seg_pub[uf][crime] = {}
-		seg_pub[uf][crime]['Total'] = ln	
+		if not 'Total' in seg_pub[uf][crime]:	
+			seg_pub[uf][crime]['Total'] = []
+		seg_pub[uf][crime]['Total'].append(ln)	
 
 	#	ln['UF'] = ocorr[i]['UF']
 	#	ln['Crime'] = ocorr[i]['Tipo Crime']
@@ -125,8 +127,10 @@ def seg_pub (arq = './dados/indicadoressegurancapublicauf (1).xls', ibge_pop = N
 
 	for i in range(len(vitim)):	
 		crime = vitim['Tipo Crime'][i]
+		sexo = vitim['Sexo da Vítima'][i]
 		ano = vitim['Ano'][i]
 		uf = vitim['UF'][i]
+		
 
 		if not ano in ibge_pop:
 		#	print(ano,'sem população')
@@ -137,7 +141,9 @@ def seg_pub (arq = './dados/indicadoressegurancapublicauf (1).xls', ibge_pop = N
 			seg_pub[uf] = {}
 		if not crime in seg_pub[uf]:
 			seg_pub[uf][crime] = {}
-		seg_pub[uf][crime][vitim['Sexo da Vítima'][i]] = ln
+		if not sexo in seg_pub[uf][crime]:	
+			seg_pub[uf][crime][sexo] = []	
+		seg_pub[uf][crime][sexo].append(ln)
 
 		ln['Ano'] = ano
 		ln['Mês'] = months[vitim['Mês'][i].strip().lower()]
