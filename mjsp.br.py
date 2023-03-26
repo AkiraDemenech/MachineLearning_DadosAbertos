@@ -1,5 +1,3 @@
-
-
 first_number = lambda s, end=1: ((first_number(s, end + 1) if end < len(s) and s[end].isdigit() else int(s[:end])) if s[
 	0].isdigit() else first_number(s[1:])) if len(s) else None
 months = {
@@ -19,10 +17,10 @@ months = {
 months.update({months[m]: m for m in months})
 
 sex = {'Total': 0,
-       'Sexo NI': 1,
+	   'Sexo NI': 1,
 	   'Masculino': 2,
 	   'Feminino': 3}
-sex.update({sex[s]:s for s in sex})
+sex.update({sex[s]: s for s in sex})
 
 crime_convert = lambda cr, crime_list: crime_list[cr] if type(cr) == int else crime_list.index(cr)
 
@@ -34,6 +32,7 @@ timestamp = lambda lt=None: timestamp(time.localtime()) if lt == None else (lt[2
 s_timestamp = lambda t=None: s_timestamp(timestamp()) if t == None else '%02d/%02d/%d %02d:%02d:%02d' % t
 
 folder = './dados/'
+
 
 def ibge(caminho=folder):
 	ibge = {}
@@ -95,16 +94,16 @@ for k in a:
 # '''
 
 
-def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None, full_pop = False, test_years = {2021}):
+def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None, full_pop=False, test_years={2021}):
 	if ibge_pop == None:
 		ibge_pop = ibge()[0]
 
 	testes = {}
-	seg_pub = {} # dados do treinamento
+	seg_pub = {}  # dados do treinamento
 	seg_pub_xls = pandas.ExcelFile(arq)
 	ocorr = pandas.read_excel(seg_pub_xls, 'Ocorrências')
 	vitim = pandas.read_excel(seg_pub_xls, 'Vítimas')
-	
+
 	crimes = list(set(vitim['Tipo Crime']).union(set(ocorr['Tipo Crime'])))
 	crimes.sort()
 
@@ -120,8 +119,8 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
 
 		if full_pop:
 			ln.update(ibge_pop[ano])
-		else:	
-			ln['Pop'] = ibge_pop[ano][uf]							
+		else:
+			ln['Pop'] = ibge_pop[ano][uf]
 
 		dados = testes if ano in test_years else seg_pub
 		if not uf in dados:
@@ -145,10 +144,10 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
 		ln = {}
 
 		if not ano in ibge_pop:
-			continue 
+			continue
 		if full_pop:
 			ln.update(ibge_pop[ano])
-		else:	
+		else:
 			ln['Pop'] = ibge_pop[ano][uf]
 
 		dados = testes if ano in test_years else seg_pub
@@ -166,11 +165,13 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
 	return seg_pub, testes, crimes
 
 
-from sklearn.neighbors import KNeighborsRegressor, KNeighborsClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import LinearRegression
 
 dados, testes, tipos = seg_pub()
-def treinar_testar (model, data, test, types, y_cols = ['Ocorrências']):
 
+
+def treinar_testar(model, data, test, types, y_cols=['Ocorrências']):
 	correct = []
 	predicted = []
 
@@ -178,7 +179,7 @@ def treinar_testar (model, data, test, types, y_cols = ['Ocorrências']):
 		print('\n', uf)
 		x = []
 		y = []
-		
+
 		x_cols = [c for c in data[uf][0] if not c in y_cols]
 
 		print(x_cols, '\t', y_cols)
@@ -187,25 +188,43 @@ def treinar_testar (model, data, test, types, y_cols = ['Ocorrências']):
 			y.append([ln[c] for c in y_cols])
 
 		model.fit(x, y)
-				
-		# Crime,Sexo,Pop,Ano,Mês -> Ocorrências 
-		
-		for ln in test[uf]:			
 
+		# Crime,Sexo,Pop,Ano,Mês -> Ocorrências
+		for ln in test[uf]:
 			x = [ln[c] for c in x_cols]
 			y = model.predict([x])
-			t = [ln[c] for c in y_cols]		
+			t = [ln[c] for c in y_cols]
 
 			crime = crime_convert(x[x_cols.index('Crime')], types)
 			sexo = sex[x[x_cols.index('Sexo')]]
 
 			# [contexto], [entrada], [saída]
 			correct.append(([uf, crime, sexo], x, t))
-			predicted.append(([uf, crime, sexo], x, y))			
-			
-			print(repr(crime),repr(sexo), x, '\t', y, t)
-			#input()
+			predicted.append(([uf, crime, sexo], x, y))
 
-	return correct, predicted		
+			print(repr(crime), repr(sexo), x, '\t', y, t)
+	# input()
+
+	return correct, predicted
+
+
+from sklearn.metrics import r2_score, mean_squared_error, accuracy_score, recall_score, f1_score, confusion_matrix
+
+corretos, preditos = treinar_testar(LinearRegression(), dados, testes, tipos)
+
+num_corretos = [o[0] for c, i, o in corretos]
+num_preditos = [o[0] for c, i, o in preditos]
+
+r2_score(num_corretos, num_preditos)
+mean_squared_error(num_corretos, num_preditos)
 
 corretos, preditos = treinar_testar(KNeighborsClassifier(n_neighbors=3), dados, testes, tipos)
+
+num_corretos = [o[0] for c, i, o in corretos]
+num_preditos = [o[0] for c, i, o in preditos]
+
+confusion_matrix(num_corretos, num_preditos)
+r2_score(num_corretos, num_preditos)
+accuracy_score(num_corretos, num_preditos)
+recall_score(num_corretos, num_preditos)
+f1_score(num_corretos, num_preditos)
