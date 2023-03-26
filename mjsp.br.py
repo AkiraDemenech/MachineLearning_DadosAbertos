@@ -16,7 +16,15 @@ months = {
 	'novembro': 11,
 	'dezembro': 12
 }
+months.update({months[m]: m for m in months})
 
+sex = {'Total': 0,
+       'Sexo NI': 1,
+	   'Masculino': 2,
+	   'Feminino': 3}
+sex.update({sex[s]:s for s in sex})
+
+crime_convert = lambda cr, crime_list: crime_list[cr] if type(cr) == int else crime_list.index(cr)
 
 import pandas
 import time
@@ -96,6 +104,9 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
 	seg_pub_xls = pandas.ExcelFile(arq)
 	ocorr = pandas.read_excel(seg_pub_xls, 'Ocorrências')
 	vitim = pandas.read_excel(seg_pub_xls, 'Vítimas')
+	
+	crimes = list(set(vitim['Tipo Crime']).union(set(ocorr['Tipo Crime'])))
+	crimes.sort()
 
 	for i in range(len(ocorr)):
 
@@ -114,16 +125,12 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
 
 		dados = testes if ano in test_years else seg_pub
 		if not uf in dados:
-			dados[uf] = {}
-		if not crime in dados[uf]:
-			dados[uf][crime] = {}
-		if not 'Total' in dados[uf][crime]:
-			dados[uf][crime]['Total'] = []
-		dados[uf][crime]['Total'].append(ln)
+			dados[uf] = []
+		dados[uf].append(ln)
 
-		#	ln['UF'] = ocorr[i]['UF']
-		#	ln['Crime'] = ocorr[i]['Tipo Crime']
-		#	ln['Sexo'] = 'Total'
+		#	ln['UF'] = uf
+		ln['Crime'] = crime_convert(crime, crimes)
+		ln['Sexo'] = sex['Total']
 
 		ln['Ano'] = ano
 		ln['Mês'] = months[ocorr['Mês'][i].strip().lower()]
@@ -147,36 +154,44 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
 		dados = testes if ano in test_years else seg_pub
 
 		if not uf in dados:
-			dados[uf] = {}
-		if not crime in dados[uf]:
-			dados[uf][crime] = {}
-		if not sexo in dados[uf][crime]:
-			dados[uf][crime][sexo] = []
-		dados[uf][crime][sexo].append(ln)
+			dados[uf] = []
+		dados[uf].append(ln)
 
+		ln['Crime'] = crime_convert(crime, crimes)
+		ln['Sexo'] = sex[sexo]
 		ln['Ano'] = ano
 		ln['Mês'] = months[vitim['Mês'][i].strip().lower()]
 		ln['Ocorrências'] = vitim['Vítimas'][i]
 
-	return seg_pub
+	return seg_pub, testes, crimes
 
 
 from sklearn.neighbors import KNeighborsRegressor, KNeighborsClassifier
 
-data, test = seg_pub()
+data, test, types = seg_pub()
 #print(data)
-# uf,crime,sexo
+# UF
 for uf in data:
-	for crime in data[uf]:
-		for sexo in data[uf][crime]:
-			x = []
-			y = []
-			y_cols = ['Ocorrências']
-			x_cols = [c for c in data[uf][crime][sexo][0] if not c in y_cols]
-			for ln in data[uf][crime][sexo]:
-				x.append([ln[c] for c in x_cols])
-				y.append([ln[c] for c in y_cols])
+	print('\n', uf)
+	x = []
+	y = []
 
-			knn_model = KNeighborsClassifier(n_neighbors=3)
-			knn_model.fit(x, y)
-			knn_model.predict()
+	y_cols = ['Ocorrências']
+	x_cols = [c for c in data[uf][0] if not c in y_cols]
+
+	print(x_cols, '\t', y_cols)
+	for ln in data[uf]:
+		x.append([ln[c] for c in x_cols])
+		y.append([ln[c] for c in y_cols])
+
+	knn_model = KNeighborsClassifier(n_neighbors=3)
+	knn_model.fit(x, y)
+			
+	# Crime,Sexo,Pop,Ano,Mês -> Ocorrências 
+	for ln in test[uf]:
+		x = [ln[c] for c in x_cols]
+		y = knn_model.predict([x])
+		t = [ln[c] for c in y_cols]		
+		
+		print(repr(crime_convert(x[x_cols.index('Crime')], types)),repr(sex[x[x_cols.index('Sexo')]]), x, '\t', y, t)
+		input()
