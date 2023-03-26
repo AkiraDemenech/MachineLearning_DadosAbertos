@@ -94,7 +94,7 @@ for k in a:
 # '''
 
 
-def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None, full_pop=False, test_years={2021}):
+def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None, full_pop = False, test_time = {(2021, 10), (2021, 11), (2021, 12)}):
 	if ibge_pop == None:
 		ibge_pop = ibge()[0]
 
@@ -104,6 +104,7 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
 	ocorr = pandas.read_excel(seg_pub_xls, 'Ocorrências')
 	vitim = pandas.read_excel(seg_pub_xls, 'Vítimas')
 
+	
 	crimes = list(set(vitim['Tipo Crime']).union(set(ocorr['Tipo Crime'])))
 	crimes.sort()
 
@@ -111,6 +112,7 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
 
 		crime = ocorr['Tipo Crime'][i]
 		ano = ocorr['Ano'][i]
+		mes = months[ocorr['Mês'][i].strip().lower()]
 		uf = ocorr['UF'][i]
 		ln = {}
 
@@ -122,7 +124,7 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
 		else:
 			ln['Pop'] = ibge_pop[ano][uf]
 
-		dados = testes if ano in test_years else seg_pub
+		dados = testes if (ano, mes) in test_time else seg_pub
 		if not uf in dados:
 			dados[uf] = []
 		dados[uf].append(ln)
@@ -132,12 +134,13 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
 		ln['Sexo'] = sex['Total']
 
 		ln['Ano'] = ano
-		ln['Mês'] = months[ocorr['Mês'][i].strip().lower()]
+		ln['Mês'] = mes
 		ln['Ocorrências'] = ocorr['Ocorrências'][i]
 
 	for i in range(len(vitim)):
 		crime = vitim['Tipo Crime'][i]
 		sexo = vitim['Sexo da Vítima'][i]
+		mes = months[vitim['Mês'][i].strip().lower()]
 		ano = vitim['Ano'][i]
 		uf = vitim['UF'][i]
 
@@ -150,7 +153,7 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
 		else:
 			ln['Pop'] = ibge_pop[ano][uf]
 
-		dados = testes if ano in test_years else seg_pub
+		dados = testes if (ano, mes) in test_time else seg_pub
 
 		if not uf in dados:
 			dados[uf] = []
@@ -159,7 +162,7 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
 		ln['Crime'] = crime_convert(crime, crimes)
 		ln['Sexo'] = sex[sexo]
 		ln['Ano'] = ano
-		ln['Mês'] = months[vitim['Mês'][i].strip().lower()]
+		ln['Mês'] = mes
 		ln['Ocorrências'] = vitim['Vítimas'][i]
 
 	return seg_pub, testes, crimes
