@@ -174,9 +174,34 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
 
     return seg_pub, testes, crimes
 
+def crimes_por_estado (dados):
+    c = {}
+    d = []
+    for ln in dados:
+        if not ln['UF'] in c:
+            c[ln['UF']] = {}
+        if not ln['Ano'] in c[ln['UF']]:     
+            c[ln['UF']][ln['Ano']] = {}
+        if not ln['Mês'] in c[ln['UF']][ln['Ano']]:     
+            c[ln['UF']][ln['Ano']][ln['Mês']] = {}
+        if not ln['Sexo'] in c[ln['UF']][ln['Ano']][ln['Mês']]:    
+            c[ln['UF']][ln['Ano']][ln['Mês']][ln['Sexo']] = {}
+
+        if ln['Crime'] in c[ln['UF']][ln['Ano']][ln['Mês']][ln['Sexo']]:    
+            c[ln['UF']][ln['Ano']][ln['Mês']][ln['Sexo']][ln['Crime']]['Ocorrências'] += ln['Ocorrências']
+        else:    
+            ln = dict(ln)
+            d.append(ln)
+            c[ln['UF']][ln['Ano']][ln['Mês']][ln['Sexo']][ln['Crime']] = ln
+            ln.pop('Crime')
+    return d        
 
 dados, testes, tipos = seg_pub()
 
+#'''# soma todas as ocorrências de cada crime em um mesmo UF, Ano, Mês e Sexo
+dados = crimes_por_estado(dados)
+testes = crimes_por_estado(testes)
+#'''
 
 def resultados_numericos(corretos, preditos):
     corretos_num = []
@@ -246,6 +271,7 @@ rsme_r = mean_squared_error(num_corretos, num_preditos)
 
 corretos, preditos = treinar_testar(KNeighborsClassifier(n_neighbors=3), dados, testes, tipos)
 num_corretos, num_preditos = resultados_numericos(corretos, preditos)
+
 
 cm_k = confusion_matrix(num_corretos, num_preditos)
 ac_k = accuracy_score(num_corretos, num_preditos)
