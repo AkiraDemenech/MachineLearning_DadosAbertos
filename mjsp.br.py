@@ -179,9 +179,8 @@ def resultados_numericos(corretos, preditos):
     preditos_num = []
     for i in range(len(corretos)):
         corretos_num.append(corretos[i][-1][0])
-        preditos_num.append(preditos[i][-1][0] if abs(preditos[i][-1][0] / corretos[i][-1][0] - 1) > 0.1 else corretos[i][-1][0])
+        preditos_num.append(preditos[i][-1][0] if abs(preditos[i][-1][0] / (corretos[i][-1][0] + 10) - 1) > 0.1 else corretos[i][-1][0])
     return corretos_num, preditos_num
-
 
 
 def treinar_testar(model, data, test, types, y_cols=['Ocorrências']):
