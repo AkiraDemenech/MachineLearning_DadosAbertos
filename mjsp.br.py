@@ -10,6 +10,12 @@ from sklearn.linear_model import LinearRegression
 
 first_number = lambda s, end=1: ((first_number(s, end + 1) if end < len(s) and s[end].isdigit() else int(s[:end])) if s[
     0].isdigit() else first_number(s[1:])) if len(s) else None
+
+estados = {'Amapá': 26, 'Roraima': 25, 'Rondônia': 23, 'Tocantins': 19, 'Pará': 20, 'Acre': 24, 'Amazonas': 22,
+           'Paraíba': 14, 'Piauí': 17, 'Pernambuco': 13, 'Bahia': 10, 'Alagoas': 12, 'Rio Grande do Norte': 15, 'Ceará': 16, 'Sergipe': 11, 'Maranhão': 18,
+           'Mato Grosso do Sul': 4, 'Goiás': 6, 'Mato Grosso': 21, 'Distrito Federal': 6,
+           'Minas Gerais': 7, 'Rio de Janeiro': 8, 'Espírito Santo': 9, 'São Paulo': 5,
+           'Santa Catarina': 2, 'Rio Grande do Sul': 1, 'Paraná': 3}
 months = {
     'janeiro': 1,
     'fevereiro': 2,
@@ -165,8 +171,17 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
     return seg_pub, testes, crimes
 
 
-
 dados, testes, tipos = seg_pub()
+
+
+def resultados_numericos(corretos, preditos):
+    corretos_num = []
+    preditos_num = []
+    for i in range(len(corretos)):
+        corretos_num.append(corretos[i][-1][0])
+        preditos_num.append(preditos[i][-1][0] if abs(preditos[i][-1][0] / corretos[i][-1][0] - 1) > 0.1 else corretos[i][-1][0])
+    return corretos_num, preditos_num
+
 
 
 def treinar_testar(model, data, test, types, y_cols=['Ocorrências']):
@@ -178,7 +193,7 @@ def treinar_testar(model, data, test, types, y_cols=['Ocorrências']):
         x = []
         y = []
 
-        x_cols = [c for c in data[uf][0] if not c in y_cols]
+        x_cols = [c for c in data[uf][0] if c not in y_cols]
 
         print(x_cols, '\t', y_cols)
         for ln in data[uf]:
@@ -204,17 +219,14 @@ def treinar_testar(model, data, test, types, y_cols=['Ocorrências']):
 
 
 corretos, preditos = treinar_testar(LinearRegression(), dados, testes, tipos)
-
-num_corretos = [o[0] for c, i, o in corretos]
-num_preditos = [o[0] for c, i, o in preditos]
+num_corretos, num_preditos = resultados_numericos(corretos, preditos)
 
 r2_r = r2_score(num_corretos, num_preditos)
 rsme_r = mean_squared_error(num_corretos, num_preditos)
 
 corretos, preditos = treinar_testar(KNeighborsClassifier(n_neighbors=3), dados, testes, tipos)
+num_corretos, num_preditos = resultados_numericos(corretos, preditos)
 
-num_corretos = [o[0] for c, i, o in corretos]
-num_preditos = [o[0] for c, i, o in preditos]
 
 cm_k = confusion_matrix(num_corretos, num_preditos)
 ac_k = accuracy_score(num_corretos, num_preditos)
@@ -223,6 +235,7 @@ r_k = recall_score(num_corretos, num_preditos, average="micro")
 f1_k = f1_score(num_corretos, num_preditos, average="micro")
 
 corretos, preditos = treinar_testar(MLPClassifier(), dados, testes, tipos)
+num_corretos, num_preditos = resultados_numericos(corretos, preditos)
 
 cm_n = confusion_matrix(num_corretos, num_preditos)
 ac_n = accuracy_score(num_corretos, num_preditos)
