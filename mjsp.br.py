@@ -7,6 +7,7 @@ from sklearn.metrics import r2_score, mean_squared_error, accuracy_score, recall
     precision_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestClassifier
 
 first_number = lambda s, end=1: ((first_number(s, end + 1) if end < len(s) and s[end].isdigit() else int(s[:end])) if s[
     0].isdigit() else first_number(s[1:])) if len(s) else None
@@ -42,7 +43,7 @@ sex.update({sex[s]: s for s in sex})
 gap = lambda predicted, correct: 1 - (predicted / correct)
 avg_gap = lambda predicted, correct: sum(gap(predicted[i], correct[i]) for i in range(len(correct))) / len(correct)
 def sd_gap (predicted, correct):
-	avg = avg_gap(predicted, correct)	
+	avg = avg_gap(predicted, correct)
 	return (sum((avg - gap(predicted[i], correct[i]))**2 for i in range(len(correct)))/len(correct))**0.5
 
 crime_convert = lambda cr, crime_list: crime_list[cr] if type(cr) == int else crime_list.index(cr)
@@ -109,7 +110,7 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
     if ibge_pop == None:
         ibge_pop = ibge()[0]
 
-    testes = []	
+    testes = []
     seg_pub = []	# dados do treinamento
     seg_pub_xls = pandas.ExcelFile(arq)
     ocorr = pandas.read_excel(seg_pub_xls, 'Ocorrências')
@@ -161,9 +162,9 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
         else:
             ln['Pop'] = ibge_pop[ano][uf]
 
-        dados = testes if (ano, mes) in test_time else seg_pub        
+        dados = testes if (ano, mes) in test_time else seg_pub
         dados.append(ln)
-        
+
         ln['UF'] = estados[uf]
         ln['Crime'] = crime_convert(crime, crimes)
         ln['Sexo'] = sex[sexo]
@@ -190,7 +191,7 @@ def resultados_numericos(corretos, preditos):
 def treinar_testar(model, data, test, types, y_cols=['Ocorrências'], normalize = False):
     print(s_timestamp(), 'Training....', model)
 
-    
+
     correct = []
     predicted = []
 
@@ -204,23 +205,23 @@ def treinar_testar(model, data, test, types, y_cols=['Ocorrências'], normalize 
     for ln in data:
         x.append([ln[c]/max_values[c] for c in x_cols])
         y.append([ln[c]/max_values[c] for c in y_cols])
-    
+
     ti = time.time_ns()
     model.fit(x,np.array(y).ravel())
-    tf = time.time_ns()    
-    
+    tf = time.time_ns()
+
     print(s_timestamp(), (tf - ti) / 1000000, 'ms')
 
     ti = time.time_ns()
         # Crime,Sexo,Pop,Ano,Mês -> Ocorrências
-    for ln in test:    
+    for ln in test:
         x = [ln[c]/max_values[c] for c in x_cols]
         p = model.predict([x])
         y = [p[i]*max_values[y_cols[i]] for i in range(len(y_cols))]
         t = [ln[c]*max_values[c] for c in y_cols]
 
         crime = sexo = uf = ''
-        if not normalize:    
+        if not normalize:
             '''
             crime = crime_convert(x[x_cols.index('Crime')], types)
             sexo = sex[x[x_cols.index('Sexo')]]
@@ -230,8 +231,8 @@ def treinar_testar(model, data, test, types, y_cols=['Ocorrências'], normalize 
         # [contexto], [entrada], [saída]
         correct.append(([uf, crime, sexo], x, t))
         predicted.append(([uf, crime, sexo], x, y))
-    tf = time.time_ns()    
-    
+    tf = time.time_ns()
+
     print(s_timestamp(), 'Testing for', (tf - ti) / 1000000, 'ms')
 
     return correct, predicted
@@ -245,7 +246,6 @@ rsme_r = mean_squared_error(num_corretos, num_preditos)
 
 corretos, preditos = treinar_testar(KNeighborsClassifier(n_neighbors=3), dados, testes, tipos)
 num_corretos, num_preditos = resultados_numericos(corretos, preditos)
-
 
 cm_k = confusion_matrix(num_corretos, num_preditos)
 ac_k = accuracy_score(num_corretos, num_preditos)
@@ -265,3 +265,13 @@ r_n = recall_score(num_corretos, num_preditos, average="micro")
 f1_n = f1_score(num_corretos, num_preditos, average="micro")
 
 print(cm_n, ac_n, p_n, r_n, f1_n)
+
+corretos, preditos = treinar_testar(RandomForestClassifier(), dados, testes, tipos)
+
+cm_rf = confusion_matrix(num_corretos, num_preditos)
+ac_rf = accuracy_score(num_corretos, num_preditos)
+p_rf = precision_score(num_corretos, num_preditos, average="micro")
+r_rf = recall_score(num_corretos, num_preditos, average="micro")
+f1_rf = f1_score(num_corretos, num_preditos, average="micro")
+
+print(cm_rf, ac_rf, p_rf, r_rf, f1_rf)
