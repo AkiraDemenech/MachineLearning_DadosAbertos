@@ -187,7 +187,7 @@ def resultados_numericos(corretos, preditos):
 
 
 
-def treinar_testar(model, data, test, types, y_cols=['Ocorrências']):
+def treinar_testar(model, data, test, types, y_cols=['Ocorrências'], normalize = False):
     print(s_timestamp(), 'Training....', model)
 
     
@@ -198,11 +198,12 @@ def treinar_testar(model, data, test, types, y_cols=['Ocorrências']):
     y = []
 
     x_cols = [c for c in data[0] if c not in y_cols]
+    max_values = {c: (max(ln[c] for ln in data) if normalize else 1) for c in data[0]}
 
     #print(x_cols, '\t', y_cols)
     for ln in data:
-        x.append([ln[c] for c in x_cols])
-        y.append([ln[c] for c in y_cols])
+        x.append([ln[c]/max_values[c] for c in x_cols])
+        y.append([ln[c]/max_values[c] for c in y_cols])
     
     ti = time.time_ns()
     model.fit(x, np.array(y).ravel())
@@ -212,14 +213,19 @@ def treinar_testar(model, data, test, types, y_cols=['Ocorrências']):
 
     ti = time.time_ns()
         # Crime,Sexo,Pop,Ano,Mês -> Ocorrências
-    for ln in test:
-        x = [ln[c] for c in x_cols]
-        y = model.predict([x])
-        t = [ln[c] for c in y_cols]
+    for ln in test:    
+        x = [ln[c]/max_values[c] for c in x_cols]
+        p = model.predict([x])
+        y = [p[i]*max_values[y_cols[i]] for i in range(len(y_cols))]
+        t = [ln[c]*max_values[c] for c in y_cols]
 
-        crime = crime_convert(x[x_cols.index('Crime')], types)
-        sexo = sex[x[x_cols.index('Sexo')]]
-        uf = estados[x[x_cols.index('UF')]]
+        crime = sexo = uf = ''
+        if not normalize:    
+            '''
+            crime = crime_convert(x[x_cols.index('Crime')], types)
+            sexo = sex[x[x_cols.index('Sexo')]]
+            uf = estados[x[x_cols.index('UF')]]
+            #'''
 
         # [contexto], [entrada], [saída]
         correct.append(([uf, crime, sexo], x, t))
@@ -247,6 +253,8 @@ p_k = precision_score(num_corretos, num_preditos, average="micro")
 r_k = recall_score(num_corretos, num_preditos, average="micro")
 f1_k = f1_score(num_corretos, num_preditos, average="micro")
 
+print(r2_r, rsme_r, cm_k, ac_k, p_k, r_k, f1_k)
+#exit()
 corretos, preditos = treinar_testar(MLPClassifier(), dados, testes, tipos)
 num_corretos, num_preditos = resultados_numericos(corretos, preditos)
 
@@ -256,4 +264,4 @@ p_n = precision_score(num_corretos, num_preditos, average="micro")
 r_n = recall_score(num_corretos, num_preditos, average="micro")
 f1_n = f1_score(num_corretos, num_preditos, average="micro")
 
-print(r2_r, rsme_r, cm_k, ac_k, p_k, r_k, f1_k, cm_n, ac_n, p_n, r_n, f1_n)
+print(cm_n, ac_n, p_n, r_n, f1_n)
