@@ -206,7 +206,7 @@ def treinar_testar(model, data, test, types, y_cols=['Ocorrências'], normalize 
         y.append([ln[c]/max_values[c] for c in y_cols])
     
     ti = time.time_ns()
-    model.fit(x, np.array(y).ravel())
+    model.fit(x,np.array(y).ravel())
     tf = time.time_ns()    
     
     print(s_timestamp(), (tf - ti) / 1000000, 'ms')
@@ -255,7 +255,7 @@ f1_k = f1_score(num_corretos, num_preditos, average="micro")
 
 print(r2_r, rsme_r, cm_k, ac_k, p_k, r_k, f1_k)
 #exit()
-corretos, preditos = treinar_testar(MLPClassifier(), dados, testes, tipos)
+corretos, preditos = treinar_testar(MLPClassifier(), dados, testes, tipos, normalize=False)
 num_corretos, num_preditos = resultados_numericos(corretos, preditos)
 
 cm_n = confusion_matrix(num_corretos, num_preditos)
