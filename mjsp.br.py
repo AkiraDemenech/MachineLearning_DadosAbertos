@@ -16,6 +16,7 @@ estados = {'Amapá': 26, 'Roraima': 25, 'Rondônia': 23, 'Tocantins': 19, 'Pará
            'Mato Grosso do Sul': 4, 'Goiás': 6, 'Mato Grosso': 21, 'Distrito Federal': 6,
            'Minas Gerais': 7, 'Rio de Janeiro': 8, 'Espírito Santo': 9, 'São Paulo': 5,
            'Santa Catarina': 2, 'Rio Grande do Sul': 1, 'Paraná': 3}
+estados.update({estados[uf]: uf for uf in estados})
 months = {
     'janeiro': 1,
     'fevereiro': 2,
@@ -37,6 +38,12 @@ sex = {'Total': 0,
        'Masculino': 2,
        'Feminino': 3}
 sex.update({sex[s]: s for s in sex})
+
+gap = lambda predicted, correct: 1 - (predicted / correct)
+avg_gap = lambda predicted, correct: sum(gap(predicted[i], correct[i]) for i in range(len(correct))) / len(correct)
+def sd_gap (predicted, correct):
+	avg = avg_gap(predicted, correct)	
+	return (sum((avg - gap(predicted[i], correct[i]))**2 for i in range(len(correct)))/len(correct))**0.5
 
 crime_convert = lambda cr, crime_list: crime_list[cr] if type(cr) == int else crime_list.index(cr)
 
@@ -102,8 +109,8 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
     if ibge_pop == None:
         ibge_pop = ibge()[0]
 
-    testes = {}
-    seg_pub = {}  # dados do treinamento
+    testes = []	
+    seg_pub = []	# dados do treinamento
     seg_pub_xls = pandas.ExcelFile(arq)
     ocorr = pandas.read_excel(seg_pub_xls, 'Ocorrências')
     vitim = pandas.read_excel(seg_pub_xls, 'Vítimas')
@@ -128,11 +135,9 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
             ln['Pop'] = ibge_pop[ano][uf]
 
         dados = testes if (ano, mes) in test_time else seg_pub
-        if not uf in dados:
-            dados[uf] = []
-        dados[uf].append(ln)
+        dados.append(ln)
 
-        #	ln['UF'] = uf
+        ln['UF'] = estados[uf]
         ln['Crime'] = crime_convert(crime, crimes)
         ln['Sexo'] = sex['Total']
 
@@ -156,12 +161,10 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
         else:
             ln['Pop'] = ibge_pop[ano][uf]
 
-        dados = testes if (ano, mes) in test_time else seg_pub
-
-        if not uf in dados:
-            dados[uf] = []
-        dados[uf].append(ln)
-
+        dados = testes if (ano, mes) in test_time else seg_pub        
+        dados.append(ln)
+        
+        ln['UF'] = estados[uf]
         ln['Crime'] = crime_convert(crime, crimes)
         ln['Sexo'] = sex[sexo]
         ln['Ano'] = ano
@@ -183,36 +186,47 @@ def resultados_numericos(corretos, preditos):
     return corretos_num, preditos_num
 
 
+
 def treinar_testar(model, data, test, types, y_cols=['Ocorrências']):
+    print(s_timestamp(), 'Training....', model)
+
+    
     correct = []
     predicted = []
 
-    for uf in data:
-        print('\n', uf)
-        x = []
-        y = []
+    x = []
+    y = []
 
-        x_cols = [c for c in data[uf][0] if c not in y_cols]
+    x_cols = [c for c in data[0] if c not in y_cols]
 
-        print(x_cols, '\t', y_cols)
-        for ln in data[uf]:
-            x.append([ln[c] for c in x_cols])
-            y.append([ln[c] for c in y_cols])
+    #print(x_cols, '\t', y_cols)
+    for ln in data:
+        x.append([ln[c] for c in x_cols])
+        y.append([ln[c] for c in y_cols])
+    
+    ti = time.time_ns()
+    model.fit(x, np.array(y).ravel())
+    tf = time.time_ns()    
+    
+    print(s_timestamp(), (tf - ti) / 1000000, 'ms')
 
-        model.fit(x, np.array(y).ravel())
-
+    ti = time.time_ns()
         # Crime,Sexo,Pop,Ano,Mês -> Ocorrências
-        for ln in test[uf]:
-            x = [ln[c] for c in x_cols]
-            y = model.predict([x])
-            t = [ln[c] for c in y_cols]
+    for ln in test:
+        x = [ln[c] for c in x_cols]
+        y = model.predict([x])
+        t = [ln[c] for c in y_cols]
 
-            crime = crime_convert(x[x_cols.index('Crime')], types)
-            sexo = sex[x[x_cols.index('Sexo')]]
+        crime = crime_convert(x[x_cols.index('Crime')], types)
+        sexo = sex[x[x_cols.index('Sexo')]]
+        uf = estados[x[x_cols.index('UF')]]
 
-            # [contexto], [entrada], [saída]
-            correct.append(([uf, crime, sexo], x, t))
-            predicted.append(([uf, crime, sexo], x, y))
+        # [contexto], [entrada], [saída]
+        correct.append(([uf, crime, sexo], x, t))
+        predicted.append(([uf, crime, sexo], x, y))
+    tf = time.time_ns()    
+    
+    print(s_timestamp(), 'Testing for', (tf - ti) / 1000000, 'ms')
 
     return correct, predicted
 
