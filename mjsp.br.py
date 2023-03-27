@@ -104,7 +104,7 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
 	ocorr = pandas.read_excel(seg_pub_xls, 'Ocorrências')
 	vitim = pandas.read_excel(seg_pub_xls, 'Vítimas')
 
-	
+
 	crimes = list(set(vitim['Tipo Crime']).union(set(ocorr['Tipo Crime'])))
 	crimes.sort()
 
@@ -211,25 +211,37 @@ def treinar_testar(model, data, test, types, y_cols=['Ocorrências']):
 	return correct, predicted
 
 
-from sklearn.metrics import r2_score, mean_squared_error, accuracy_score, recall_score, f1_score, confusion_matrix
+from sklearn.metrics import r2_score, mean_squared_error, accuracy_score, recall_score, f1_score, confusion_matrix, \
+	precision_score
 
 corretos, preditos = treinar_testar(LinearRegression(), dados, testes, tipos)
 
-num_corretos = [o[0]	for c, i, o in corretos]
+num_corretos = [o[0] for c, i, o in corretos]
 num_preditos = [o[0][0]	for c, i, o in preditos]
 
-r2_score(num_corretos, num_preditos)
-mean_squared_error(num_corretos, num_preditos)
+r2_r = r2_score(num_corretos, num_preditos)
+rsme_r = mean_squared_error(num_corretos, num_preditos)
 
 
 corretos, preditos = treinar_testar(KNeighborsClassifier(n_neighbors=3), dados, testes, tipos)
 
-num_corretos = [o[0]	for c, i, o in corretos]
-num_preditos = [o[0]	for c, i, o in preditos]
+num_corretos = [o[0] for c, i, o in corretos]
+num_preditos = [o[0] for c, i, o in preditos]
 
-confusion_matrix(num_corretos, num_preditos)
-r2_score(num_corretos, num_preditos)
-f1_score(num_corretos, num_preditos)
-accuracy_score(num_corretos, num_preditos)
-recall_score(num_corretos, num_preditos)
+cm_k = confusion_matrix(num_corretos, num_preditos)
+ac_k = accuracy_score(num_corretos, num_preditos)
+p_k = precision_score(num_corretos, num_preditos)
+r_k = recall_score(num_corretos, num_preditos)
+f1_k = f1_score(num_corretos, num_preditos)
 
+from sklearn.neural_network import MLPClassifier
+
+corretos, preditos = treinar_testar(MLPClassifier(), dados, testes, tipos)
+
+cm_n = confusion_matrix(num_corretos, num_preditos)
+ac_n = accuracy_score(num_corretos, num_preditos)
+p_n = precision_score(num_corretos, num_preditos)
+r_n = recall_score(num_corretos, num_preditos)
+f1_n = f1_score(num_corretos, num_preditos)
+
+print(r2_r, rsme_r, cm_k, ac_k, p_k, r_k, f1_k, cm_n, ac_n, p_n, r_n, f1_n)
