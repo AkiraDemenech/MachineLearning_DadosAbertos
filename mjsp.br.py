@@ -5,7 +5,7 @@ import time
 import os
 from sklearn.metrics import r2_score, mean_squared_error, accuracy_score, recall_score, f1_score, confusion_matrix, \
     precision_score
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import KNeighborsRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 
@@ -222,21 +222,27 @@ corretos, preditos = treinar_testar(LinearRegression(), dados, testes, tipos)
 num_corretos, num_preditos = resultados_numericos(corretos, preditos)
 
 menan = mean_squared_error(num_corretos, num_preditos, squared=False)
+r2 = r2_score(num_corretos, num_preditos)
 print("LinearRegression")
-print(menan)
+print('menan = ', menan)
+print('r2 = ', r2)
 
-corretos, preditos = treinar_testar(KNeighborsClassifier(n_neighbors=3), dados, testes, tipos)
+corretos, preditos = treinar_testar(KNeighborsRegressor(), dados, testes, tipos)
 num_corretos, num_preditos = resultados_numericos(corretos, preditos)
 
 menan = mean_squared_error(num_corretos, num_preditos, squared=False)
+r2 = r2_score(num_corretos, num_preditos)
 
-print("KNeighbors")
-print(menan)
+print("\nKNeighborsRegressor")
+print('menan = ', menan)
+print('r2 = ', r2)
 
-corretos, preditos = treinar_testar(RandomForestRegressor(n_estimators=50,max_depth=25), dados, testes, tipos)
+corretos, preditos = treinar_testar(RandomForestRegressor(), dados, testes, tipos)
 num_corretos, num_preditos = resultados_numericos(corretos, preditos)
 
 menan = mean_squared_error(num_corretos, num_preditos, squared=False)
+r2 = r2_score(num_corretos, num_preditos)
 
-print("Random Forest")
-print(menan)
+print("\nRandomForestRegressor")
+print('menan = ', menan)
+print('r2 = ', r2)
