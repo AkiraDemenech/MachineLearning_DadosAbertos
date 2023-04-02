@@ -7,7 +7,7 @@ from sklearn.metrics import r2_score, mean_squared_error, accuracy_score, recall
     precision_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestRegressor
 
 first_number = lambda s, end=1: ((first_number(s, end + 1) if end < len(s) and s[end].isdigit() else int(s[:end])) if s[
     0].isdigit() else first_number(s[1:])) if len(s) else None
@@ -17,7 +17,6 @@ estados = {'Amapá': 26, 'Roraima': 25, 'Rondônia': 23, 'Tocantins': 19, 'Pará
            'Mato Grosso do Sul': 4, 'Goiás': 6, 'Mato Grosso': 21, 'Distrito Federal': 6,
            'Minas Gerais': 7, 'Rio de Janeiro': 8, 'Espírito Santo': 9, 'São Paulo': 5,
            'Santa Catarina': 2, 'Rio Grande do Sul': 1, 'Paraná': 3}
-estados.update({estados[uf]: uf for uf in estados})
 months = {
     'janeiro': 1,
     'fevereiro': 2,
@@ -40,12 +39,6 @@ sex = {'Total': 0,
        'Feminino': 3}
 sex.update({sex[s]: s for s in sex})
 
-gap = lambda predicted, correct: 1 - (predicted / correct)
-avg_gap = lambda predicted, correct: sum(gap(predicted[i], correct[i]) for i in range(len(correct))) / len(correct)
-def sd_gap (predicted, correct):
-	avg = avg_gap(predicted, correct)
-	return (sum((avg - gap(predicted[i], correct[i]))**2 for i in range(len(correct)))/len(correct))**0.5
-
 crime_convert = lambda cr, crime_list: crime_list[cr] if type(cr) == int else crime_list.index(cr)
 
 timestamp = lambda lt=None: timestamp(time.localtime()) if lt is None else (lt[2::-1] + lt[3:6])
@@ -62,18 +55,18 @@ def ibge(caminho=folder):
         if arq.strip().lower().endswith('.xls'):
 
             ano = first_number(arq)
-            print('\n' + s_timestamp() + '\t', ano, '\t', arq)
+            # print('\n' + s_timestamp() + '\t', ano, '\t', arq)
 
             if ano is None or ano < 1000:
                 continue
 
-            print(s_timestamp(), '\tReading file....')
+            # print(s_timestamp(), '\tReading file....')
 
             i = time.time_ns()
             raw_ibge[ano] = pandas.read_excel(pandas.ExcelFile(caminho + arq), 'BRASIL E UFs')
             f = time.time_ns()
 
-            print(s_timestamp(), '\t', len(raw_ibge[ano]), 'raw rows in', (f - i) / 1000000, 'ms')
+            # print(s_timestamp(), '\t', len(raw_ibge[ano]), 'raw rows in', (f - i) / 1000000, 'ms')
 
             ibge[ano] = {}
             uf_col = pop_col = []
@@ -89,10 +82,10 @@ def ibge(caminho=folder):
                     dados.append(raw_ibge[ano][col][i])
 
                 if t > n:
-                    print(s_timestamp(), '\tUF:', repr(col))
+                    # print(s_timestamp(), '\tUF:', repr(col))
                     uf_col = dados
                 elif n > 0 and t > 0:
-                    print(s_timestamp(), '\tEstimativa:', repr(col))
+                    # print(s_timestamp(), '\tEstimativa:', repr(col))
                     pop_col = [(first_number(valor.strip().replace('.', '')) if type(valor) == str else valor) for valor
                                in dados]
 
@@ -110,8 +103,8 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
     if ibge_pop == None:
         ibge_pop = ibge()[0]
 
-    testes = []
-    seg_pub = []	# dados do treinamento
+    testes = {}
+    seg_pub = {}  # dados do treinamento
     seg_pub_xls = pandas.ExcelFile(arq)
     ocorr = pandas.read_excel(seg_pub_xls, 'Ocorrências')
     vitim = pandas.read_excel(seg_pub_xls, 'Vítimas')
@@ -136,9 +129,11 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
             ln['Pop'] = ibge_pop[ano][uf]
 
         dados = testes if (ano, mes) in test_time else seg_pub
-        dados.append(ln)
+        if not uf in dados:
+            dados[uf] = []
+        dados[uf].append(ln)
 
-        ln['UF'] = estados[uf]
+        #	ln['UF'] = uf
         ln['Crime'] = crime_convert(crime, crimes)
         ln['Sexo'] = sex['Total']
 
@@ -163,9 +158,11 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
             ln['Pop'] = ibge_pop[ano][uf]
 
         dados = testes if (ano, mes) in test_time else seg_pub
-        dados.append(ln)
 
-        ln['UF'] = estados[uf]
+        if not uf in dados:
+            dados[uf] = []
+        dados[uf].append(ln)
+
         ln['Crime'] = crime_convert(crime, crimes)
         ln['Sexo'] = sex[sexo]
         ln['Ano'] = ano
@@ -174,91 +171,49 @@ def seg_pub(arq=folder + 'indicadoressegurancapublicauf (1).xls', ibge_pop=None,
 
     return seg_pub, testes, crimes
 
-def crimes_por_estado (dados):
-    c = {}
-    d = []
-    for ln in dados:
-        if not ln['UF'] in c:
-            c[ln['UF']] = {}
-        if not ln['Ano'] in c[ln['UF']]:     
-            c[ln['UF']][ln['Ano']] = {}
-        if not ln['Mês'] in c[ln['UF']][ln['Ano']]:     
-            c[ln['UF']][ln['Ano']][ln['Mês']] = {}
-        if not ln['Sexo'] in c[ln['UF']][ln['Ano']][ln['Mês']]:    
-            c[ln['UF']][ln['Ano']][ln['Mês']][ln['Sexo']] = {}
-
-        if ln['Crime'] in c[ln['UF']][ln['Ano']][ln['Mês']][ln['Sexo']]:    
-            c[ln['UF']][ln['Ano']][ln['Mês']][ln['Sexo']][ln['Crime']]['Ocorrências'] += ln['Ocorrências']
-        else:    
-            ln = dict(ln)
-            d.append(ln)
-            c[ln['UF']][ln['Ano']][ln['Mês']][ln['Sexo']][ln['Crime']] = ln
-            ln.pop('Crime')
-    return d        
 
 dados, testes, tipos = seg_pub()
 
-#'''# soma todas as ocorrências de cada crime em um mesmo UF, Ano, Mês e Sexo
-dados = crimes_por_estado(dados)
-testes = crimes_por_estado(testes)
-#'''
 
 def resultados_numericos(corretos, preditos):
     corretos_num = []
     preditos_num = []
     for i in range(len(corretos)):
         corretos_num.append(corretos[i][-1][0])
-        preditos_num.append(preditos[i][-1][0] if abs(preditos[i][-1][0] / (corretos[i][-1][0] + 10) - 1) > 0.1 else corretos[i][-1][0])
+        preditos_num.append(preditos[i][-1][0])
     return corretos_num, preditos_num
 
 
-
-def treinar_testar(model, data, test, types, y_cols=['Ocorrências'], normalize = False):
-    print(s_timestamp(), 'Training....', model)
-
-
+def treinar_testar(model, data, test, types, y_cols=['Ocorrências']):
     correct = []
     predicted = []
 
-    x = []
-    y = []
+    for uf in data:
+        # print('\n', uf)
+        x = []
+        y = []
 
-    x_cols = [c for c in data[0] if c not in y_cols]
-    max_values = {c: (max(ln[c] for ln in data) if normalize else 1) for c in data[0]}
+        x_cols = [c for c in data[uf][0] if c not in y_cols]
 
-    #print(x_cols, '\t', y_cols)
-    for ln in data:
-        x.append([ln[c]/max_values[c] for c in x_cols])
-        y.append([ln[c]/max_values[c] for c in y_cols])
+        # print(x_cols, '\t', y_cols)
+        for ln in data[uf]:
+            x.append([ln[c] for c in x_cols])
+            y.append([ln[c] for c in y_cols])
 
-    ti = time.time_ns()
-    model.fit(x,np.array(y).ravel())
-    tf = time.time_ns()
+        model.fit(x, np.array(y).ravel())
 
-    print(s_timestamp(), (tf - ti) / 1000000, 'ms')
-
-    ti = time.time_ns()
         # Crime,Sexo,Pop,Ano,Mês -> Ocorrências
-    for ln in test:
-        x = [ln[c]/max_values[c] for c in x_cols]
-        p = model.predict([x])
-        y = [p[i]*max_values[y_cols[i]] for i in range(len(y_cols))]
-        t = [ln[c]*max_values[c] for c in y_cols]
+        for ln in test[uf]:
+            x = [ln[c] for c in x_cols]
+            y = model.predict([x])
+            t = [ln[c] for c in y_cols]
 
-        crime = sexo = uf = ''
-        if not normalize:
-            '''
             crime = crime_convert(x[x_cols.index('Crime')], types)
             sexo = sex[x[x_cols.index('Sexo')]]
-            uf = estados[x[x_cols.index('UF')]]
-            #'''
 
-        # [contexto], [entrada], [saída]
-        correct.append(([uf, crime, sexo], x, t))
-        predicted.append(([uf, crime, sexo], x, y))
-    tf = time.time_ns()
-
-    print(s_timestamp(), 'Testing for', (tf - ti) / 1000000, 'ms')
+            # [contexto], [entrada], [saída]
+            correct.append(([uf, crime, sexo], x, t))
+            predicted.append(([uf, crime, sexo], x, y))
 
     return correct, predicted
 
@@ -266,38 +221,22 @@ def treinar_testar(model, data, test, types, y_cols=['Ocorrências'], normalize 
 corretos, preditos = treinar_testar(LinearRegression(), dados, testes, tipos)
 num_corretos, num_preditos = resultados_numericos(corretos, preditos)
 
-r2_r = r2_score(num_corretos, num_preditos)
-rsme_r = mean_squared_error(num_corretos, num_preditos)
+menan = mean_squared_error(num_corretos, num_preditos, squared=False)
+print("LinearRegression")
+print(menan)
 
 corretos, preditos = treinar_testar(KNeighborsClassifier(n_neighbors=3), dados, testes, tipos)
 num_corretos, num_preditos = resultados_numericos(corretos, preditos)
 
+menan = mean_squared_error(num_corretos, num_preditos, squared=False)
 
-cm_k = confusion_matrix(num_corretos, num_preditos)
-ac_k = accuracy_score(num_corretos, num_preditos)
-p_k = precision_score(num_corretos, num_preditos, average="micro")
-r_k = recall_score(num_corretos, num_preditos, average="micro")
-f1_k = f1_score(num_corretos, num_preditos, average="micro")
+print("KNeighbors")
+print(menan)
 
-print(r2_r, rsme_r, cm_k, ac_k, p_k, r_k, f1_k)
-#exit()
-corretos, preditos = treinar_testar(MLPClassifier(), dados, testes, tipos, normalize=False)
+corretos, preditos = treinar_testar(RandomForestRegressor(n_estimators=50,max_depth=25), dados, testes, tipos)
 num_corretos, num_preditos = resultados_numericos(corretos, preditos)
 
-cm_n = confusion_matrix(num_corretos, num_preditos)
-ac_n = accuracy_score(num_corretos, num_preditos)
-p_n = precision_score(num_corretos, num_preditos, average="micro")
-r_n = recall_score(num_corretos, num_preditos, average="micro")
-f1_n = f1_score(num_corretos, num_preditos, average="micro")
+menan = mean_squared_error(num_corretos, num_preditos, squared=False)
 
-print(cm_n, ac_n, p_n, r_n, f1_n)
-
-corretos, preditos = treinar_testar(RandomForestClassifier(), dados, testes, tipos)
-
-cm_rf = confusion_matrix(num_corretos, num_preditos)
-ac_rf = accuracy_score(num_corretos, num_preditos)
-p_rf = precision_score(num_corretos, num_preditos, average="micro")
-r_rf = recall_score(num_corretos, num_preditos, average="micro")
-f1_rf = f1_score(num_corretos, num_preditos, average="micro")
-
-print(cm_rf, ac_rf, p_rf, r_rf, f1_rf)
+print("Random Forest")
+print(menan)
